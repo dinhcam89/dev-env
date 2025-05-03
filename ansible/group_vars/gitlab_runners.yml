@@ -1,0 +1,4 @@
+# group_vars/runners.yml
+
+gitlab_url: "http://gitlab.dinhcam.tech/"
+# registration_token: "REPLACE_ME_LATER"

@@ -1,0 +1,26 @@
+- name: Install Docker
+  apt:
+    name: ["docker.io", "docker-compose"]
+    state: present
+    update_cache: yes
+
+- name: Download Harbor installer
+  get_url:
+    url: https://github.com/goharbor/harbor/releases/download/v2.9.0/harbor-online-installer-v2.9.0.tgz
+    dest: /opt/harbor.tgz
+
+- name: Extract Harbor
+  unarchive:
+    src: /opt/harbor.tgz
+    dest: /opt/
+    remote_src: yes
+
+- name: Copy Harbor config template
+  template:
+    src: harbor.yml.j2
+    dest: /opt/harbor/harbor.yml
+
+- name: Install Harbor
+  shell: |
+    cd /opt/harbor
+    ./install.sh

@@ -1,0 +1,20 @@
+- name: Install GitLab dependencies
+  apt:
+    name: ["curl", "openssh-server", "ca-certificates", "tzdata", "perl"]
+    update_cache: yes
+
+- name: Add GitLab repository
+  shell: |
+    curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | sudo bash
+
+- name: Install GitLab 17.9.7
+  apt:
+    name: "gitlab-ee=17.9.7-ee.0"
+    state: present
+  environment:
+    GITLAB_VERSION: "17.9.7-ee.0"
+
+- name: Reconfigure GitLab with external URL
+  shell: |
+    EXTERNAL_URL="{{ gitlab_external_url }}" apt-get install -y gitlab-ee=17.9.7-ee.0
+  when: gitlab_external_url is defined
