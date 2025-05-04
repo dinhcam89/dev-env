@@ -1,0 +1,55 @@
+# .gitlab-ci.yml
+stages:
+  - security
+  - terraform
+  - configure
+
+variables:
+  TF_ROOT: "terraform"
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+
+before_script:
+  - apt-get update -y
+  - apt-get install -y jq unzip openssh-client python3-pip
+  - pip3 install ansible
+  - mkdir -p ~/.ssh
+  - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - eval $(ssh-agent -s)
+  - ssh-add ~/.ssh/id_rsa
+
+checkov:
+  stage: security
+  image: bridgecrew/checkov:latest
+  script:
+    - checkov -d $TF_ROOT
+  rules:
+    - when: always
+
+terraform:
+  stage: terraform
+  image: hashicorp/terraform:1.5.7
+  script:
+    - cd $TF_ROOT
+    - terraform init
+    - terraform apply -auto-approve
+    - terraform output -json > ../tf_output.json
+  artifacts:
+    paths:
+      - tf_output.json
+
+deploy:
+  stage: configure
+  image: python:3.10
+  dependencies:
+    - terraform
+  script:
+    - chmod +x ./scripts/generate_inventory.sh
+    - ./scripts/generate_inventory.sh
+    - cd ansible
+    - ansible-playbook -i inventory/hosts.ini playbooks/gitlab.yml
+    - echo "Ensure registration_token is set in group_vars/runners.yml"
+    - ansible-playbook -i inventory/hosts.ini playbooks/runners.yml
+    - ansible-playbook -i inventory/hosts.ini playbooks/harbor.yml
+  rules:
+    - when: manual
