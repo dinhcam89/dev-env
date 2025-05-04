@@ -1,2 +1,3 @@
 harbor_domain: "{{ inventory_hostname }}"
 harbor_admin_password: "Harbor12345"
+harbor_admin_user: "admin"

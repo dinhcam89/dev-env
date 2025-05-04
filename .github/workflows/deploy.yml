@@ -1,65 +1,69 @@
-# name: Deploy and Configure Development ENV
+name: Deploy and Configure Development ENV
 
-# on:
-#   workflow_dispatch:
+on:
+  workflow_dispatch:
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-#     env:
-#       TF_VAR_private_key_path: ${{ secrets.SSH_PRIVATE_KEY }}
-#       ANSIBLE_HOST_KEY_CHECKING: False
+    env:
+      ANSIBLE_HOST_KEY_CHECKING: False
 
-#     steps:
-#       - name: Checkout Repository
-#         uses: actions/checkout@v3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-#       - name: Set up Terraform
-#         uses: hashicorp/setup-terraform@v3
-#         with:
-#           terraform_version: 1.5.7
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: AWS_REGION
+          role-to-assume: OIDC_ROLE_ARN
 
-#       - name: Terraform Init
-#         working-directory: ./terraform
-#         run: terraform init
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
 
-#       - name: Terraform Apply
-#         working-directory: ./terraform
-#         run: terraform apply -auto-approve
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
 
-#       - name: Install jq
-#         run: sudo apt-get install jq -y
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve
 
-#       - name: Generate Ansible Inventory
-#         run: |
-#           cd terraform
-#           terraform output -json > tf_output.json
-#           cd ..
+      - name: Install jq
+        run: sudo apt-get install jq -y
 
-#           ./scripts/generate_inventory.sh
+      - name: Generate Ansible Inventory
+        run: |
+          cd terraform
+          terraform output -json > tf_output.json
+          cd ..
+          ./scripts/generate_inventory.sh
 
-#       - name: Set up SSH Key
-#         run: |
-#           mkdir -p ~/.ssh
-#           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-#           chmod 600 ~/.ssh/id_rsa
+      - name: Set up SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-#       - name: Run GitLab Playbook
-#         run: |
-#           cd ansible
-#           ansible-playbook -i inventory/hosts.ini playbooks/gitlab.yml
+      - name: Run GitLab Playbook
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/hosts.ini playbooks/gitlab.yml
 
-#       # Optional: Pause to update token
-#       - name: Wait for Token Input (Optional)
-#         run: echo "Add registration_token manually to group_vars/runners.yml"
+      # Optional pause or wait for token injection if needed
+      - name: Wait for Token (Optional)
+        run: echo "Insert registration_token manually into group_vars/runners.yml"
 
-#       - name: Run GitLab Runners Playbook
-#         run: |
-#           cd ansible
-#           ansible-playbook -i inventory/hosts.ini playbooks/runners.yml
+      - name: Run Runners Playbook
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/hosts.ini playbooks/runners.yml
 
-#       - name: Run Harbor Playbook
-#         run: |
-#           cd ansible
-#           ansible-playbook -i inventory/hosts.ini playbooks/harbor.yml
+      - name: Run Harbor Playbook
+        run: |
+          cd ansible
+          ansible-playbook -i inventory/hosts.ini playbooks/harbor.yml
